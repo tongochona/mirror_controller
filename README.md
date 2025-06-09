@@ -30,6 +30,7 @@ This project simulates a **closed-loop control system** for **view mirror adjust
 
 ## 🔌 System Architecture
 
+![System Architecture Diagram](assets/circuit_image.png)
 
 - Master node sends angle setpoints via CAN.
 - Slave node controls mirror using motor + encoder.
@@ -54,10 +55,6 @@ This project simulates a **closed-loop control system** for **view mirror adjust
 - ✅ Validate encoder feedback logic
 - ✅ Implement closed-loop control with PID (optional)
 - ✅ Observe stable final mirror position
-
----
-
-## 📁 Folder Structure
 
 
 ---
