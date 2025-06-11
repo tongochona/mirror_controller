@@ -29,6 +29,7 @@
 //#include "event_groups.h"
 
 #include <stdlib.h>
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -81,7 +82,7 @@ uint8_t RxData[8];
 volatile uint8_t signal_control;
 int debug;
 uint16_t position;
-#define speed 625
+int speed;
 
 /**************** QUEUE HANDLER ***********************/
 xQueueHandle ControlSignalQueue;
@@ -368,7 +369,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 47;
+  htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
@@ -441,18 +442,39 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 //define task
 void Task_ControlMotor(void *argument){
-	int threshold = 10;
-	int error;
 	int current_angle;
 	int desire_angle;
+	int error;
+	float derivative;
+	float output;
+
+	float Kp = 15.0f;
+	float Ki = 0.5f;
+	float Kd = 0.5f;
+
+	float integral = 0.0f;
+	float previous_error = 0.0f;
+
 	while(1){
 		xSemaphoreTake(CurrentAngleMutex, portMAX_DELAY);
-		desire_angle = (signal_control*90)/255;
-		current_angle = (position * 360) / 47;
+
+		// Tính góc mong muốn và góc hiện tại
+		desire_angle = (signal_control * 90) / 255;
+		current_angle = position/257;
 		error = desire_angle - current_angle;
 
-		if (abs(error) > threshold){
-			if (error > 0){
+		// Tính các thành phần PID
+		integral += error;
+		derivative = error - previous_error;
+		output = Kp * error + Ki * integral + Kd * derivative;
+		previous_error = error;
+
+		// Giới hạn output thành giá trị PWM hợp lệ (0–100%)
+		if (output > 625) output = 625;
+		if (output < -625) output = -625;
+
+		if (fabs(error) > 1) {
+			if (output > 0) {
 				// Quay phải
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); // IN1 = 0
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET);   // IN2 = 1
@@ -461,20 +483,24 @@ void Task_ControlMotor(void *argument){
 				// Quay trái
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_SET);
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
+				output = -output; // PWM phải luôn dương
 			}
-			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, speed);
+			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, (uint32_t)output);
+			speed = output;
 		}
 		else {
-			// Dừng motor
+			// Dừng motor khi đủ chính xác
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
 			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+			integral = 0.0f;
 		}
 
 		xSemaphoreGive(CurrentAngleMutex);
-		vTaskDelay(100);
+		vTaskDelay(pdMS_TO_TICKS(50)); // PID hoạt động mỗi 50ms
 	}
 }
+
 
 void Task_ReadEncoder(void *argument)
 {
@@ -498,7 +524,7 @@ void Task_SendMessage(void *argument)
 {
 	while(1){
 		xSemaphoreTake(CurrentAngleMutex, portMAX_DELAY);
-		TxData[7] = position;
+		TxData[7] = position/257;
 		HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox);
 		xSemaphoreGive(CurrentAngleMutex);
 		vTaskDelay(200);

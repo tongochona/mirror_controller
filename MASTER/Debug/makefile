@@ -38,34 +38,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := RTOS_TX
+BUILD_ARTIFACT_NAME := MASTER
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-RTOS_TX.elf \
+MASTER.elf \
 
 MAP_FILES += \
-RTOS_TX.map \
+MASTER.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-RTOS_TX.list \
+MASTER.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: RTOS_TX.elf secondary-outputs
+main-build: MASTER.elf secondary-outputs
 
 # Tool invocations
-RTOS_TX.elf RTOS_TX.map: $(OBJS) $(USER_OBJS) /home/ngochoan/STM32CubeIDE/workspace_1.18.0/RTOS_TX/STM32F103CBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "RTOS_TX.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"/home/ngochoan/STM32CubeIDE/workspace_1.18.0/RTOS_TX/STM32F103CBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="RTOS_TX.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+MASTER.elf MASTER.map: $(OBJS) $(USER_OBJS) /home/ngochoan/STM32CubeIDE/workspace_1.18.0/MASTER/STM32F103CBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "MASTER.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"/home/ngochoan/STM32CubeIDE/workspace_1.18.0/MASTER/STM32F103CBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="MASTER.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -74,14 +74,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-RTOS_TX.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "RTOS_TX.list"
+MASTER.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "MASTER.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) RTOS_TX.elf RTOS_TX.list RTOS_TX.map default.size.stdout
+	-$(RM) MASTER.elf MASTER.list MASTER.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

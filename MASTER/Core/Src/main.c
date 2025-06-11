@@ -443,7 +443,7 @@ void Task_Display(void *argument)
 	while(1){
 		xSemaphoreTake(ADCMutex, portMAX_DELAY);
 		desire_angle = (readValue*90)/4096;
-		current_angle = (signal_feedback * 360) / 47;
+		current_angle = signal_feedback;
 		sprintf(snum, "%03d", current_angle);
 		sprintf(snum2, "%03d", desire_angle);
 		SSD1306_GotoXY (90,0);
