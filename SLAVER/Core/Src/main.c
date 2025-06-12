@@ -79,8 +79,10 @@ CAN_FilterTypeDef sFilterConfig;
 CAN_RxHeaderTypeDef RxHeader;
 uint8_t RxData[8];
 
-volatile uint8_t signal_control;
+uint8_t signal_control;
 int debug;
+int debug2;
+size_t freeHeap;
 uint16_t position;
 int speed;
 
@@ -93,27 +95,25 @@ SemaphoreHandle_t CurrentAngleMutex;
 /**************** TASK HANDLER ***********************/
 TaskHandle_t ControlMotor_Handler;
 TaskHandle_t ReadEncoder_Handler;
-TaskHandle_t ToggleLED_Handler;
 TaskHandle_t SendMessage_Handler;
 TaskHandle_t ReceiveMessage_Handler;
 
 void Task_ControlMotor (void *argument);
 void Task_ReadEncoder (void *argument);
-void Task_ToggleLED (void *argument);
 void Task_SendMessage (void *argument);
 void Task_ReceiveMessage (void *argument);
 
 int lastDataRx;
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-//	BaseType_t xHigherPriorityTaskWoken = pdTRUE;
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 	HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &RxHeader, RxData);
-//	if(lastDataRx != RxData[7]){
-//		lastDataRx = RxData[7];
-//		xQueueSendFromISR(ControlSignalQueue, &lastDataRx, &xHigherPriorityTaskWoken);
-//		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
-//	}
-	signal_control = RxData[7];
+	if(lastDataRx != RxData[7]){
+		lastDataRx = RxData[7];
+		xQueueSendFromISR(ControlSignalQueue, &lastDataRx, &xHigherPriorityTaskWoken);
+		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
+	}
+//	signal_control = RxData[7];
 
 }
 /* USER CODE END 0 */
@@ -183,18 +183,18 @@ int main(void)
 
   // create task
   CurrentAngleMutex = xSemaphoreCreateMutex();
-  if (CurrentAngleMutex != NULL)
-  {
-   debug = 1000;
-  }
 
   ControlSignalQueue = xQueueCreate(5, sizeof (int));
 
-  xTaskCreate(Task_ControlMotor, "ControlMotor", 128, NULL, 1, &ControlMotor_Handler);
+  BaseType_t result = xTaskCreate(Task_ReceiveMessage, "ReceiveMessage", 128, NULL, 4, &ReceiveMessage_Handler);
   xTaskCreate(Task_ReadEncoder, "EncoderRead", 128, NULL, 3, &ReadEncoder_Handler);
-  xTaskCreate(Task_ToggleLED, "ToggleLED", 128, NULL, 1, &ToggleLED_Handler);
   xTaskCreate(Task_SendMessage, "SendMessage", 128, NULL, 2, &SendMessage_Handler);
-//  xTaskCreate(Task_ReceiveMessage, "ReceiveMessage", 128, NULL, 4, &ReceiveMessage_Handler);
+  xTaskCreate(Task_ControlMotor, "ControlMotor", 128, NULL, 1, &ControlMotor_Handler);
+  if (result != pdPASS) {
+      debug = 99999; // Task failed to create
+  }
+  freeHeap = xPortGetFreeHeapSize();
+
 
   vTaskStartScheduler();
 
@@ -417,22 +417,12 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5|GPIO_PIN_7, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
-
   /*Configure GPIO pins : PA5 PA7 */
   GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -513,13 +503,6 @@ void Task_ReadEncoder(void *argument)
     }
 }
 
-void Task_ToggleLED(void *argument){
-	while(1){
-		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_2);
-		vTaskDelay(debug);
-	}
-}
-
 void Task_SendMessage(void *argument)
 {
 	while(1){
@@ -537,7 +520,9 @@ void Task_ReceiveMessage(void *argument)
 	while(1){
 		if (xQueueReceive(ControlSignalQueue, &received, portMAX_DELAY) == pdTRUE){
 			signal_control = received;
-			debug = received;
+			debug2 =5000;
+		}else{
+			debug2 = 10000;
 		}
 	}
 }

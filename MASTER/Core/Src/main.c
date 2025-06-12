@@ -74,7 +74,7 @@ static void MX_I2C1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint16_t readValue;
-volatile uint8_t signal_feedback;
+uint8_t signal_feedback;
 
 // RX
 CAN_FilterTypeDef sFilterConfig;
@@ -87,6 +87,7 @@ uint32_t TxMailbox;
 uint8_t TxData[8]="NIZAR---";
 
 int debug;
+size_t freeHeap;
 
 /**************** MUTEX HANDLER ***********************/
 SemaphoreHandle_t ADCMutex;
@@ -97,25 +98,25 @@ xQueueHandle ControlSignalQueue;
 /**************** TASK HANDLER ***********************/
 TaskHandle_t SendMessage_Handler;
 TaskHandle_t ReceiveMessage_Handler;
-TaskHandle_t ToggleLED_Handler;
 TaskHandle_t Display_Handler;
 TaskHandle_t ReadPotentiometer_Handler;
 
 void Task_SendMessage (void *argument);
 void Task_ReceiveMessage (void *argument);
-void Task_ToggleLED (void *argument);
 void Task_Display (void *argument);
 void Task_ReadPotentiometer (void *argument);
 
 int lastDataRx;
 void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 	HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO1, &RxHeader, RxData);
-//	if(lastDataRx != RxData[7]){
-//		lastDataRx = RxData[7];
-//		xQueueSendFromISR(ControlSignalQueue, &lastDataRx, pdFALSE);
-//	}
-	signal_feedback = RxData[7];
+	if(lastDataRx != RxData[7]){
+		lastDataRx = RxData[7];
+		xQueueSendFromISR(ControlSignalQueue, &lastDataRx, &xHigherPriorityTaskWoken);
+		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
+	}
+//	signal_feedback = RxData[7];
 }
 /* USER CODE END 0 */
 
@@ -184,10 +185,14 @@ int main(void)
   ControlSignalQueue = xQueueCreate(5, sizeof (int));
 
   xTaskCreate(Task_SendMessage, "SendMessage", 128, NULL, 3, &SendMessage_Handler);
-//  xTaskCreate(Task_ReceiveMessage, "ReceiveMessage", 128, NULL, 1, &ReceiveMessage_Handler);
-  xTaskCreate(Task_ToggleLED, "ToggleLED", 128, NULL, 1, &ToggleLED_Handler);
-  xTaskCreate(Task_Display, "Display", 128, NULL, 2, &Display_Handler);
   xTaskCreate(Task_ReadPotentiometer, "ReadPotentiometer", 128, NULL, 3, &ReadPotentiometer_Handler);
+  xTaskCreate(Task_Display, "Display", 128, NULL, 2, &Display_Handler);
+  BaseType_t result = xTaskCreate(Task_ReceiveMessage, "ReceiveMessage", 128, NULL, 1, &ReceiveMessage_Handler);
+
+  if (result != pdPASS) {
+      debug = 99999; // Task failed to create
+  }
+  freeHeap = xPortGetFreeHeapSize();
 
   vTaskStartScheduler();
 
@@ -375,7 +380,6 @@ static void MX_I2C1_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
   /* USER CODE END MX_GPIO_Init_1 */
@@ -384,16 +388,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : PB2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
