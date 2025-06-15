@@ -59,6 +59,14 @@ This project simulates a **closed-loop control system** for **view mirror adjust
 
 ---
 
+## DEMO
+
+<p align="center"><img src="assets/circuit.jpg" width="60%" alt="" /></p>
+
+<p align="center"><img src="assets/demo.gif" width="60%" alt="" /></p>
+
+---
+
 ## 📌 Future Improvements
 
 - PID control for smoother adjustment
