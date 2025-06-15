@@ -38,34 +38,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := SLAVE
+BUILD_ARTIFACT_NAME := SLAVER
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-SLAVE.elf \
+SLAVER.elf \
 
 MAP_FILES += \
-SLAVE.map \
+SLAVER.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-SLAVE.list \
+SLAVER.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: SLAVE.elf secondary-outputs
+main-build: SLAVER.elf secondary-outputs
 
 # Tool invocations
-SLAVE.elf SLAVE.map: $(OBJS) $(USER_OBJS) /home/ngochoan/STM32CubeIDE/workspace_1.18.0/SLAVE/STM32F103CBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "SLAVE.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"/home/ngochoan/STM32CubeIDE/workspace_1.18.0/SLAVE/STM32F103CBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SLAVE.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+SLAVER.elf SLAVER.map: $(OBJS) $(USER_OBJS) /home/ngochoan/STM32CubeIDE/workspace_1.18.0/SLAVER/STM32F103CBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "SLAVER.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"/home/ngochoan/STM32CubeIDE/workspace_1.18.0/SLAVER/STM32F103CBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="SLAVER.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -74,14 +74,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-SLAVE.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "SLAVE.list"
+SLAVER.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "SLAVER.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) SLAVE.elf SLAVE.list SLAVE.map default.size.stdout
+	-$(RM) SLAVER.elf SLAVER.list SLAVER.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

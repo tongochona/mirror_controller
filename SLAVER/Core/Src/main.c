@@ -70,7 +70,6 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t readValue;
 CAN_TxHeaderTypeDef TxHeader;
 uint32_t TxMailbox;
 uint8_t TxData[8]="NIZAR---";
@@ -84,7 +83,7 @@ int debug;
 int debug2;
 size_t freeHeap;
 uint16_t position;
-int speed;
+#define MAX_SPEED 625
 
 /**************** QUEUE HANDLER ***********************/
 xQueueHandle ControlSignalQueue;
@@ -369,7 +368,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
+  htim3.Init.Period = 8000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
@@ -449,8 +448,8 @@ void Task_ControlMotor(void *argument){
 		xSemaphoreTake(CurrentAngleMutex, portMAX_DELAY);
 
 		// Tính góc mong muốn và góc hiện tại
-		desire_angle = (signal_control * 90) / 255;
-		current_angle = position/257;
+		desire_angle = signal_control/2;
+		current_angle = position/80;
 		error = desire_angle - current_angle;
 
 		// Tính các thành phần PID
@@ -460,10 +459,10 @@ void Task_ControlMotor(void *argument){
 		previous_error = error;
 
 		// Giới hạn output thành giá trị PWM hợp lệ (0–100%)
-		if (output > 625) output = 625;
-		if (output < -625) output = -625;
+		if (output > MAX_SPEED) output = 625;
+		if (output < -MAX_SPEED) output = -625;
 
-		if (fabs(error) > 1) {
+		if (fabs(error) > 0) {
 			if (output > 0) {
 				// Quay phải
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET); // IN1 = 0
@@ -475,14 +474,15 @@ void Task_ControlMotor(void *argument){
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
 				output = -output; // PWM phải luôn dương
 			}
-			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, (uint32_t)output);
-			speed = output;
+			// inverter output (using 6N137)
+			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, (uint32_t)(MAX_SPEED - output));
 		}
 		else {
 			// Dừng motor khi đủ chính xác
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
-			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0);
+			// inverter output (using 6N137)
+			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, MAX_SPEED);
 			integral = 0.0f;
 		}
 
@@ -507,7 +507,7 @@ void Task_SendMessage(void *argument)
 {
 	while(1){
 		xSemaphoreTake(CurrentAngleMutex, portMAX_DELAY);
-		TxData[7] = position/257;
+		TxData[7] = position/80;
 		HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox);
 		xSemaphoreGive(CurrentAngleMutex);
 		vTaskDelay(200);
