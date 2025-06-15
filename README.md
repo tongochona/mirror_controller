@@ -65,6 +65,8 @@ This project simulates a **closed-loop control system** for **view mirror adjust
 
 <p align="center"><img src="assets/demo.gif" width="60%" alt="" /></p>
 
+[Link video drive](https://drive.google.com/file/d/1CBDl7BTdcRPpO-u7P6rqEIhDhqxG5uJG/view?usp=sharing)
+
 ---
 
 ## 📌 Future Improvements
